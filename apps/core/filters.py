@@ -1,4 +1,8 @@
-"""FilterSets for the core app."""
+"""FilterSets for the core app.
+
+Filtering operates on the canonical (Uzbek) name columns when matching
+by name, since that is the primary language of the agency.
+"""
 import django_filters
 
 from .models import PortfolioProject, Review
@@ -7,12 +11,12 @@ from .models import PortfolioProject, Review
 class PortfolioProjectFilter(django_filters.FilterSet):
     category = django_filters.NumberFilter(field_name="category__id")
     category_name = django_filters.CharFilter(
-        field_name="category__name",
+        field_name="category__name_uz",
         lookup_expr="iexact",
     )
     service_type = django_filters.NumberFilter(field_name="service_types__id")
     service_type_name = django_filters.CharFilter(
-        field_name="service_types__name",
+        field_name="service_types__name_uz",
         lookup_expr="iexact",
     )
     date_from = django_filters.DateFilter(field_name="date", lookup_expr="gte")

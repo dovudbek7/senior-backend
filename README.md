@@ -5,12 +5,45 @@ Django + DRF backend for the **Senior** agency website (SMM and Web Development)
 ## Features
 
 - Full CRUD for `Category`, `ServiceType`, `PortfolioProject`, `Review`
+- **Database-level i18n** in three languages — Uzbek (default), Russian, English
 - **Live `/statistics/` endpoint** — auto-calculated from the DB on every request, nothing persisted
-- Class-based ViewSets, clean app layout (`models / serializers / filters / views / urls`)
+- Class-based ViewSets, clean app layout (`models / serializers / filters / views / urls / i18n`)
 - Filtering (category, service type, date range), search, pagination
 - Image uploads (`MEDIA_URL` / `MEDIA_ROOT`)
 - Swagger UI + Redoc via `drf-yasg`
 - CORS-ready, environment-driven configuration
+
+## Multi-language
+
+Every translatable field is stored as three columns: `<field>_uz`, `<field>_ru`,
+`<field>_en`. Uzbek is the primary language and is **required**; Russian and
+English are optional and fall back to Uzbek on read.
+
+Language switching via query param:
+
+```
+GET /api/v1/projects/?lang=uz   (default)
+GET /api/v1/projects/?lang=ru
+GET /api/v1/projects/?lang=en
+```
+
+Read responses include both the resolved alias (`name`, `description`,
+`tasks`, `comment`, `what_we_do`) and all per-language columns:
+
+```json
+{
+  "id": 1,
+  "name": "Loyiha nomi",
+  "description": "Tavsif...",
+  "tasks": ["UI/UX", "Frontend"],
+  "name_uz": "Loyiha nomi", "name_ru": "Название", "name_en": "Project name",
+  "description_uz": "...", "description_ru": "...", "description_en": "...",
+  "tasks_uz": [...], "tasks_ru": [...], "tasks_en": [...]
+}
+```
+
+Search and ordering operate on Uzbek (primary) columns only.
+Filtering by `category_name` / `service_type_name` matches the Uzbek name.
 
 ## Quickstart
 
@@ -69,7 +102,11 @@ GET /api/v1/projects/?ordering=-date
 ```bash
 curl -X POST http://localhost:8000/api/v1/categories/ \
   -H "Content-Type: application/json" \
-  -d '{"name": "Landing"}'
+  -d '{
+    "name_uz": "Landing",
+    "name_ru": "Лендинг",
+    "name_en": "Landing"
+  }'
 ```
 
 ### Create a ServiceType
@@ -78,9 +115,15 @@ curl -X POST http://localhost:8000/api/v1/categories/ \
 curl -X POST http://localhost:8000/api/v1/service-types/ \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Web Development",
-    "description": "Custom websites and web apps.",
-    "what_we_do": ["Landing pages", "E-commerce", "Admin dashboards"]
+    "name_uz": "Veb-ishlab chiqish",
+    "name_ru": "Веб-разработка",
+    "name_en": "Web Development",
+    "description_uz": "Saytlar va veb-ilovalar.",
+    "description_ru": "Сайты и веб-приложения.",
+    "description_en": "Custom websites and web apps.",
+    "what_we_do_uz": ["Landing", "E-commerce", "Admin paneli"],
+    "what_we_do_ru": ["Лендинг", "E-commerce", "Админ-панель"],
+    "what_we_do_en": ["Landing", "E-commerce", "Admin dashboards"]
   }'
 ```
 
@@ -103,12 +146,18 @@ JSON form (when image is omitted):
 
 ```json
 {
-  "name": "Acme Landing",
+  "name_uz": "Acme Landing",
+  "name_ru": "Лендинг Acme",
+  "name_en": "Acme Landing",
+  "description_uz": "Konversiyaga yo'naltirilgan landing.",
+  "description_ru": "Высоко-конверсионный лендинг.",
+  "description_en": "High-converting landing page for Acme.",
+  "tasks_uz": ["UI/UX", "Frontend", "SEO"],
+  "tasks_ru": ["UI/UX", "Фронтенд", "SEO"],
+  "tasks_en": ["UI/UX", "Frontend", "SEO"],
   "website_url": "https://acme.example",
   "category": 1,
   "date": "2025-09-15",
-  "tasks": ["UI/UX", "Frontend", "SEO"],
-  "description": "High-converting landing page for Acme.",
   "service_types": [1, 2]
 }
 ```
@@ -122,8 +171,12 @@ Project list/detail responses include the nested `category_detail` and
 curl -X POST http://localhost:8000/api/v1/reviews/ \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Jane Doe",
-    "comment": "Top-tier work, delivered on time.",
+    "name_uz": "Jasur Aliyev",
+    "name_ru": "Джасур Алиев",
+    "name_en": "Jasur Aliyev",
+    "comment_uz": "Yuqori darajadagi ish, vaqtida yetkazib berildi.",
+    "comment_ru": "Отличная работа, всё в срок.",
+    "comment_en": "Top-tier work, delivered on time.",
     "project": 1
   }'
 ```
@@ -139,10 +192,11 @@ senior-backend/
 │   └── urls.py
 └── apps/
     └── core/              # Single domain app
-        ├── models.py      # Category, ServiceType, PortfolioProject, Review
+        ├── models.py      # Category, ServiceType, PortfolioProject, Review (with _uz/_ru/_en columns)
+        ├── i18n.py        # LANGUAGES, get_request_language, get_translated_field, TranslatedField
         ├── serializers.py
         ├── filters.py
         ├── views.py
         ├── urls.py
-        └── admin.py
+        └── admin.py       # Per-language fieldsets in the admin
 ```
